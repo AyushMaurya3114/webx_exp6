@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Registration Page</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      padding: 20px; 
+      max-width: 600px; 
+      margin: 0 auto;
+    }
+    h2 {
+      color: #333;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 10px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #message {
+      color: green;
+      font-weight: bold;
+      margin-top: 15px;
+    }
+    .error {
+      color: red;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    #suggestions {
+      border: 1px solid #ddd;
+      max-height: 150px;
+      overflow-y: auto;
+      margin-top: 5px;
+    }
+    #suggestions div {
+      padding: 8px;
+      cursor: pointer;
+    }
+    #suggestions div:hover {
+      background-color: #f1f1f1;
+    }
+  </style>
+</head>
+<body>
+  <h2>Registration Form</h2>
+  <form id="regForm">
+    <div class="form-group">
+      <label for="name">Name:</label>
+      <input type="text" id="name" required>
+    </div>
+    
+    <div class="form-group">
+      <label for="college">College:</label>
+      <input type="text" id="college" onkeyup="suggestCollege()" autocomplete="off" required>
+      <div id="suggestions"></div>
+    </div>
+    
+    <div class="form-group">
+      <label for="username">Username:</label>
+      <input type="text" id="username" onblur="checkUsername()" required>
+      <div id="userCheck" class="error"></div>
+    </div>
+    
+    <div class="form-group">
+      <label for="password">Password:</label>
+      <input type="password" id="password" required>
+    </div>
+    
+    <div class="form-group">
+      <label for="confirm">Confirm Password:</label>
+      <input type="password" id="confirm" onkeyup="checkPassword()" required>
+      <div id="passCheck" class="error"></div>
+    </div>
+    
+    <button type="submit">Register</button>
+  </form>
+  <div id="message"></div>
+
+  <script>
+    let validUser = false, validPass = false;
+
+    function checkUsername() {
+      const username = document.getElementById("username").value;
+      if (!username) return;
+      
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", `http://localhost:3000?type=username&username=${username}`, true);
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState == 4 && xhr.status == 200) {
+          const res = JSON.parse(xhr.responseText);
+          document.getElementById("userCheck").innerText = res.exists ? "Username already taken" : "";
+          validUser = !res.exists;
+        }
+      };
+      xhr.send();
+    }
+
+    function checkPassword() {
+      const pass = document.getElementById("password").value;
+      const confirm = document.getElementById("confirm").value;
+      const check = document.getElementById("passCheck");
+      
+      if (!pass || !confirm) {
+        check.innerText = "";
+        validPass = false;
+        return;
+      }
+      
+      if (pass !== confirm) {
+        check.innerText = "Passwords do not match";
+        validPass = false;
+      } else {
+        check.innerText = "";
+        validPass = true;
+      }
+    }
+
+    function suggestCollege() {
+      const input = document.getElementById("college").value.toLowerCase();
+      if (!input) {
+        document.getElementById("suggestions").innerHTML = "";
+        return;
+      }
+      
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", "http://localhost:3000?type=college", true);
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState == 4 && xhr.status == 200) {
+          const colleges = JSON.parse(xhr.responseText);
+          let suggestions = colleges.filter(c => c.toLowerCase().includes(input));
+          document.getElementById("suggestions").innerHTML =
+            suggestions.map(s => `<div onclick="chooseCollege('${s}')">${s}</div>`).join('');
+        }
+      };
+      xhr.send();
+    }
+
+    function chooseCollege(name) {
+      document.getElementById("college").value = name;
+      document.getElementById("suggestions").innerHTML = "";
+    }
+
+    document.getElementById("regForm").onsubmit = function (e) {
+      e.preventDefault();
+      
+      // Make sure password validation is run
+      checkPassword();
+      
+      // Run username validation and wait for its completion
+      const username = document.getElementById("username").value;
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", `http://localhost:3000?type=username&username=${username}`, true);
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState == 4 && xhr.status == 200) {
+          const res = JSON.parse(xhr.responseText);
+          document.getElementById("userCheck").innerText = res.exists ? "Username already taken" : "";
+          validUser = !res.exists;
+          
+          // Only show success message if both validations pass
+          if (validUser && validPass) {
+            document.getElementById("message").innerText = "Successfully Registered";
+          } else {
+            document.getElementById("message").innerText = "";
+          }
+        }
+      };
+      xhr.send();
+    };
+  </script>
+</body>
+</html>
